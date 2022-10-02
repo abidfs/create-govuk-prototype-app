@@ -12,7 +12,8 @@
   "scripts": {
     "start": "node start",
     "build": "node lib/build/generate-assets",
-    "serve": "node listen-on-port"
+    "serve": "node listen-on-port",
+    "add-page": "node ./scripts/add-page.js"
   },
   "dependencies": {
     "@govuk-prototype-kit/step-by-step": "^2.0.0",
