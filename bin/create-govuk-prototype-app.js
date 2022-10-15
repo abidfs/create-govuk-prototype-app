@@ -2,25 +2,19 @@
 
 "use strict";
 
-const path = require("path");
-const util = require("util");
-const packageJson = require("../package.json");
 const fs = require("fs");
-const exec = util.promisify(require("child_process").exec);
+const inquirer = require("inquirer");
+const path = require("path");
 
-async function runCmd(command) {
-  try {
-    const { stdout, stderr } = await exec(command);
-    console.log(stdout);
-    console.log(stderr);
-  } catch {
-    (error) => {
-      console.log("\x1b[31m");
-      console.log(error);
-      console.log("\x1b[0m");
-    };
-  }
-}
+const {
+  runCmd,
+  buildPackageJson,
+  generateProjectFromGovukTemplate,
+  checkProjectExists,
+} = require("./scripts/utils");
+const configureMojFrontend = require("./scripts/moj");
+
+const packageJson = require("../package.json");
 
 if (process.argv.length < 3) {
   console.log("\x1b[31m");
@@ -32,79 +26,93 @@ if (process.argv.length < 3) {
 }
 
 const currentPath = process.cwd();
-const projectName = process.argv[2];
-const projectPath = path.join(currentPath, projectName);
 const gitRepo = "https://github.com/abidfs/create-govuk-prototype-app.git";
 
-try {
-  fs.mkdirSync(projectPath);
-} catch (err) {
-  if (err.code === "EEXIST") {
-    console.log(
-      "\x1b[31m",
-      `Project ${projectName} already exist in the current directory, please use a different name.`,
-      "\x1b[0m"
-    );
-  } else {
-    console.log("\x1b[31m");
-    console.log(error);
-    console.log("\x1b[0m");
-  }
-  process.exit(1);
-}
+inquirer
+  .prompt([
+    {
+      type: "list",
+      name: "action",
+      message: "What you would like to do today",
+      choices: [
+        "Create a prototype from scratch",
+        "Add template to existing prototype",
+      ],
+    },
+  ])
+  .then(async (answers) => {
+    if (answers.action === "Create a prototype from scratch") {
+      inquirer
+        .prompt([
+          {
+            name: "projectName",
+            message: "Project name?",
+            default: "my-prototype",
+          },
+          {
+            type: "checkbox",
+            name: "templates",
+            message: "Select template",
+            default: ["Default (Govuk frontend)"],
+            choices: [
+              "Default (Govuk frontend)",
+              "MOJ Frontend",
+              "DWP Frontend",
+            ],
+          },
+        ])
+        .then(async ({ projectName, templates }) => {
+          const projectPath = path.join(currentPath, projectName);
 
-function buildPackageJson(packageJson, projectName) {
-  const { bin, keywords, license, homepage, repository, bugs, ...newPackage } =
-    packageJson;
+          checkProjectExists(projectPath);
 
-  Object.assign(newPackage, {
-    name: projectName,
-    version: "1.0.0",
-    description: "",
-    author: "",
+          try {
+            await generateProjectFromGovukTemplate(gitRepo, projectPath);
+
+            buildPackageJson(packageJson, projectName);
+
+            if (templates.includes("MOJ Frontend")) {
+              await configureMojFrontend(projectPath);
+            }
+
+            console.log("\x1b[32m");
+            console.log(
+              "The installation is complete, prototype is ready to use !",
+              "\x1b[0m"
+            );
+
+            console.log(
+              "\x1b[34m",
+              "You can start the prototype app by typing:"
+            );
+            console.log(`    cd ${projectName}`);
+            console.log("    npm start", "\x1b[0m");
+            console.log();
+            console.log("Check Readme.md for more information");
+            console.log();
+          } catch (error) {
+            console.log(error);
+          }
+        });
+    } else {
+      inquirer
+        .prompt([
+          {
+            type: "checkbox",
+            name: "templates",
+            message: "Which templates you would like to add?",
+            choices: [
+              "MOJ Frontend",
+              "DWP Frontend",
+              "HMRC Frontend",
+              "HMCTS Frontend",
+            ],
+          },
+        ])
+        .then(async (answers) => {
+          if (answers.templates.include("MOJ Frontend")) {
+            configureMojFrontend(projectPath);
+          }
+        });
+    }
   });
-
-  fs.writeFileSync(
-    `${process.cwd()}/package.json`,
-    JSON.stringify(newPackage, null, 2),
-    "utf8"
-  );
-}
-
-(async function () {
-  try {
-    console.log("\x1b[33m");
-    console.log("Downloading files...", "\x1b[0m");
-    await runCmd(`git clone --depth 1 ${gitRepo} ${projectPath}`);
-    console.log();
-
-    process.chdir(projectPath);
-
-    console.log("\x1b[34m");
-    console.log("Installing dependencies...", "\x1b[0m");
-    await runCmd("npm install");
-
-    console.log("\x1b[34m");
-    console.log("Removing useless files", "\x1b[0m");
-    await runCmd("npx rimraf ./.git");
-    fs.rmSync(path.join(projectPath, "bin"), { recursive: true });
-    fs.unlinkSync(path.join(projectPath, "package.json"));
-
-    buildPackageJson(packageJson, projectName);
-
-    console.log("\x1b[32m");
-    console.log(
-      "The installation is complete, prototype is ready to use !",
-      "\x1b[0m"
-    );
-
-    console.log("\x1b[34m", "You can start the prototype app by typing:");
-    console.log(`    cd ${projectName}`);
-    console.log("    npm start", "\x1b[0m");
-    console.log();
-    console.log("Check Readme.md for more information");
-    console.log();
-  } catch (error) {
-    console.log(error);
-  }
-})();
