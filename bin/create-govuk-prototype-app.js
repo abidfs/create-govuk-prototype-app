@@ -7,7 +7,6 @@ const inquirer = require("inquirer");
 const path = require("path");
 
 const {
-  runCmd,
   buildPackageJson,
   generateProjectFromGovukTemplate,
   checkProjectExists,
@@ -15,15 +14,6 @@ const {
 const configureMojFrontend = require("./scripts/moj");
 
 const packageJson = require("../package.json");
-
-if (process.argv.length < 3) {
-  console.log("\x1b[31m");
-  console.log("Please provide a name to your app.");
-  console.log("For example :");
-  console.log("    npx create-govuk-prototype-app my-prototype");
-  console.log("\x1b[0m");
-  process.exit(1);
-}
 
 const currentPath = process.cwd();
 const gitRepo = "https://github.com/abidfs/create-govuk-prototype-app.git";
@@ -110,7 +100,8 @@ inquirer
           },
         ])
         .then(async (answers) => {
-          if (answers.templates.include("MOJ Frontend")) {
+          if (answers.templates.includes("MOJ Frontend")) {
+            const projectPath = process.cwd();
             configureMojFrontend(projectPath);
           }
         });
