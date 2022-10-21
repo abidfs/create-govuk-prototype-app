@@ -12,6 +12,7 @@ const {
   checkProjectExists,
 } = require("./scripts/utils");
 const configureMojFrontend = require("./scripts/moj");
+const configureDwpFrontend = require("./scripts/dwp");
 
 const packageJson = require("../package.json");
 
@@ -65,6 +66,10 @@ inquirer
               await configureMojFrontend(projectPath);
             }
 
+            if (templates.includes("DWP Frontend")) {
+              await configureDwpFrontend(projectPath);
+            }
+
             console.log("\x1b[32m");
             console.log(
               "The installation is complete, prototype is ready to use !",
@@ -103,6 +108,11 @@ inquirer
           if (answers.templates.includes("MOJ Frontend")) {
             const projectPath = process.cwd();
             configureMojFrontend(projectPath);
+          }
+
+          if (answers.templates.includes("DWP Frontend")) {
+            const projectPath = process.cwd();
+            configureDwpFrontend(projectPath);
           }
         });
     }
